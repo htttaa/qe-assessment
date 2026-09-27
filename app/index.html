@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do App</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 30px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        button {
+            padding: 10px 16px;
+            cursor: pointer;
+        }
+
+        .task {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 6px;
+        }
+
+        .success {
+            margin-top: 15px;
+            padding: 10px;
+            background: #d4edda;
+            color: #155724;
+            display: none;
+        }
+
+        .error {
+            color: #b00020;
+            display: none;
+            margin-bottom: 10px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background: white;
+            width: 500px;
+            max-width: 90%;
+            margin: 100px auto;
+            padding: 25px;
+            border-radius: 8px;
+        }
+
+        .subtask {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="header">
+        <h1 id="welcome-message">
+            Hey Paul! this is your to-do list for today:
+        </h1>
+
+        <a href="#tasks" id="my-tasks-link">
+            My Tasks
+        </a>
+    </div>
+
+    <hr>
+
+    <h2>Create Task</h2>
+
+    <label for="task-name">Task Name</label>
+    <input
+        id="task-name"
+        type="text"
+        minlength="3"
+        maxlength="100"
+    >
+
+    <label for="task-description">Task Description</label>
+    <textarea
+        id="task-description"
+        maxlength="250"
+    ></textarea>
+
+    <label for="task-due-date">Due Date</label>
+    <input
+        id="task-due-date"
+        type="date"
+    >
+
+    <label>
+        <input
+            id="task-urgent"
+            type="checkbox"
+        >
+        Mark as Urgent
+    </label>
+
+    <br><br>
+
+    <button id="add-task">
+        Add Task
+    </button>
+
+    <div id="task-error" class="error">
+        Task name must contain between 3 and 100 characters.
+    </div>
+
+    <div id="task-success" class="success">
+        Task created Successfully
+    </div>
+
+    <h2 id="tasks">Created Tasks</h2>
+
+    <div id="task-list"></div>
+
+</div>
+
+
+<!-- SUBTASK MODAL -->
+
+<div id="subtask-modal" class="modal">
+
+    <div class="modal-content">
+
+        <h2>Create Subtasks</h2>
+
+        <label>Task ID</label>
+        <input id="subtask-task-id" type="text" readonly>
+
+        <label>Task Description</label>
+        <textarea id="subtask-task-description" readonly></textarea>
+
+        <label for="subtask-description">
+            Subtask Description
+        </label>
+
+        <textarea
+            id="subtask-description"
+            maxlength="250"
+        ></textarea>
+
+        <label for="subtask-due-date">
+            Sub Task due date
+        </label>
+
+        <input
+            id="subtask-due-date"
+            type="date"
+        >
+
+        <button id="add-subtask">
+            Add
+        </button>
+
+        <button id="close-modal">
+            Close
+        </button>
+
+        <div id="subtask-success" class="success">
+            sub-task created Successfully
+        </div>
+
+        <h3>
+            Subtasks
+            (<span id="subtask-count">0</span>)
+        </h3>
+
+        <div id="subtask-list"></div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+    let taskCounter = 1;
+    let tasks = [];
+
+    let selectedTask = null;
+
+    const taskName = document.getElementById("task-name");
+    const taskDescription = document.getElementById("task-description");
+    const taskDueDate = document.getElementById("task-due-date");
+    const taskUrgent = document.getElementById("task-urgent");
+
+    const taskList = document.getElementById("task-list");
+
+    const taskError = document.getElementById("task-error");
+    const taskSuccess = document.getElementById("task-success");
+
+
+    function showMessage(element) {
+
+        element.style.display = "block";
+
+        setTimeout(() => {
+            element.style.display = "none";
+        }, 3000);
+    }
+
+
+    function createTask() {
+
+        const name = taskName.value.trim();
+
+        if (name.length < 3 || name.length > 100) {
+
+            taskError.style.display = "block";
+
+            return;
+        }
+
+        taskError.style.display = "none";
+
+        const task = {
+
+            id: taskCounter++,
+
+            name: name,
+
+            description: taskDescription.value,
+
+            dueDate: taskDueDate.value,
+
+            urgent: taskUrgent.checked,
+
+            subtasks: []
+
+        };
+
+        tasks.push(task);
+
+        renderTask(task);
+
+        taskName.value = "";
+        taskDescription.value = "";
+        taskDueDate.value = "";
+        taskUrgent.checked = false;
+
+        showMessage(taskSuccess);
+    }
+
+
+    function renderTask(task) {
+
+        const taskElement = document.createElement("div");
+
+        taskElement.className = "task";
+
+        taskElement.setAttribute(
+            "data-testid",
+            `task-${task.id}`
+        );
+
+        taskElement.innerHTML = `
+
+            <h3>${task.name}</h3>
+
+            <p>${task.description}</p>
+
+            ${task.urgent
+                ? '<span style="color:red">Urgent</span>'
+                : ''
+            }
+
+            <br><br>
+
+            <button
+                class="create-subtask"
+                data-task-id="${task.id}"
+            >
+                Create Subtasks (0)
+            </button>
+
+        `;
+
+        taskList.appendChild(taskElement);
+
+        taskElement
+            .querySelector(".create-subtask")
+            .addEventListener("click", () => {
+
+                openSubtaskModal(task);
+
+            });
+    }
+
+
+    function openSubtaskModal(task) {
+
+        selectedTask = task;
+
+        document.getElementById(
+            "subtask-task-id"
+        ).value = task.id;
+
+        document.getElementById(
+            "subtask-task-description"
+        ).value = task.description;
+
+        renderSubtasks();
+
+        document.getElementById(
+            "subtask-modal"
+        ).style.display = "block";
+    }
+
+
+    function renderSubtasks() {
+
+        const list =
+            document.getElementById("subtask-list");
+
+        list.innerHTML = "";
+
+        selectedTask.subtasks.forEach(subtask => {
+
+            const element =
+                document.createElement("div");
+
+            element.className = "subtask";
+
+            element.textContent =
+                `${subtask.description} - ${subtask.dueDate}`;
+
+            list.appendChild(element);
+
+        });
+
+        document.getElementById(
+            "subtask-count"
+        ).textContent =
+            selectedTask.subtasks.length;
+
+        const button =
+            document.querySelector(
+                `[data-task-id="${selectedTask.id}"]`
+            );
+
+        if (button) {
+
+            button.textContent =
+                `Create Subtasks (${selectedTask.subtasks.length})`;
+
+        }
+    }
+
+
+    function createSubtask() {
+
+        const description =
+            document.getElementById(
+                "subtask-description"
+            ).value.trim();
+
+        const dueDate =
+            document.getElementById(
+                "subtask-due-date"
+            ).value;
+
+        if (!description || !dueDate) {
+
+            return;
+
+        }
+
+        selectedTask.subtasks.push({
+
+            description: description,
+
+            dueDate: dueDate
+
+        });
+
+        document.getElementById(
+            "subtask-description"
+        ).value = "";
+
+        document.getElementById(
+            "subtask-due-date"
+        ).value = "";
+
+        renderSubtasks();
+
+        showMessage(
+            document.getElementById(
+                "subtask-success"
+            )
+        );
+    }
+
+
+    document
+        .getElementById("add-task")
+        .addEventListener(
+            "click",
+            createTask
+        );
+
+
+    document
+        .getElementById("add-subtask")
+        .addEventListener(
+            "click",
+            createSubtask
+        );
+
+
+    document
+        .getElementById("close-modal")
+        .addEventListener(
+            "click",
+            () => {
+
+                document.getElementById(
+                    "subtask-modal"
+                ).style.display = "none";
+
+            }
+        );
+
+</script>
+
+</body>
+</html>
